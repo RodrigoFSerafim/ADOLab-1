@@ -2,19 +2,19 @@ using System.Data;
 using Microsoft.Data.SqlClient;
 
 /// <summary>
-/// Classe de repositório para gerenciar entidades Aluno no banco de dados.
+/// Classe de repositï¿½rio para gerenciar entidades Aluno no banco de dados.
 /// </summary>
 public class AlunoRepository : IRepository<Aluno>
 {
     /// <summary>
-    /// Obtém ou define a string de conexão com o banco de dados.
+    /// Obtï¿½m ou define a string de conexï¿½o com o banco de dados.
     /// </summary>
     public string ConnectionString { get; set; }
 
     /// <summary>
-    /// Inicializa uma nova instância da classe <see cref="AlunoRepository"/>.
+    /// Inicializa uma nova instï¿½ncia da classe <see cref="AlunoRepository"/>.
     /// </summary>
-    /// <param name="connectionString">A string de conexão com o banco de dados.</param>
+    /// <param name="connectionString">A string de conexï¿½o com o banco de dados.</param>
     public AlunoRepository(string connectionString)
     {
         ConnectionString = connectionString;
@@ -49,10 +49,25 @@ public class AlunoRepository : IRepository<Aluno>
     /// <param name="idade">A idade do Aluno.</param>
     /// <param name="email">O email do Aluno.</param>
     /// <param name="dataNascimento">A data de nascimento do Aluno.</param>
-    /// <returns>O ID do Aluno recém-inserido.</returns>
+    /// <returns>O ID do Aluno recï¿½m-inserido.</returns>
     public int Inserir(string nome, int idade, string email, DateTime dataNascimento)
     {
-        throw new NotImplementedException();
+        const string sql = @"
+            INSERT INTO dbo.Alunos (Nome, Idade, Email, DataNascimento)
+            VALUES (@Nome, @Idade, @Email, @DataNascimento);
+            SELECT SCOPE_IDENTITY();";
+
+        using var conn = new SqlConnection(ConnectionString);
+        conn.Open();
+        using var cmd = new SqlCommand(sql, conn) { CommandType = CommandType.Text, CommandTimeout = 30 };
+        
+        cmd.Parameters.AddWithValue("@Nome", nome);
+        cmd.Parameters.AddWithValue("@Idade", idade);
+        cmd.Parameters.AddWithValue("@Email", email);
+        cmd.Parameters.AddWithValue("@DataNascimento", dataNascimento);
+
+        var result = cmd.ExecuteScalar();
+        return Convert.ToInt32(result);
     }
 
     /// <summary>
@@ -61,7 +76,27 @@ public class AlunoRepository : IRepository<Aluno>
     /// <returns>Uma lista de entidades Aluno.</returns>
     public List<Aluno> Listar()
     {
-        throw new NotImplementedException();
+        const string sql = "SELECT Id, Nome, Idade, Email, DataNascimento FROM dbo.Alunos ORDER BY Id";
+        var alunos = new List<Aluno>();
+
+        using var conn = new SqlConnection(ConnectionString);
+        conn.Open();
+        using var cmd = new SqlCommand(sql, conn) { CommandType = CommandType.Text, CommandTimeout = 30 };
+        using var reader = cmd.ExecuteReader();
+
+        while (reader.Read())
+        {
+            var aluno = new Aluno(
+                reader.GetInt32("Id"),
+                reader.GetString("Nome"),
+                reader.GetInt32("Idade"),
+                reader.GetString("Email"),
+                reader.GetDateTime("DataNascimento")
+            );
+            alunos.Add(aluno);
+        }
+
+        return alunos;
     }
 
     /// <summary>
@@ -72,20 +107,43 @@ public class AlunoRepository : IRepository<Aluno>
     /// <param name="idade">A nova idade do Aluno.</param>
     /// <param name="email">O novo email do Aluno.</param>
     /// <param name="dataNascimento">A nova data de nascimento do Aluno.</param>
-    /// <returns>O número de linhas afetadas.</returns>
+    /// <returns>O nï¿½mero de linhas afetadas.</returns>
     public int Atualizar(int id, string nome, int idade, string email, DateTime dataNascimento)
     {
-        throw new NotImplementedException();
+        const string sql = @"
+            UPDATE dbo.Alunos 
+            SET Nome = @Nome, Idade = @Idade, Email = @Email, DataNascimento = @DataNascimento
+            WHERE Id = @Id";
+
+        using var conn = new SqlConnection(ConnectionString);
+        conn.Open();
+        using var cmd = new SqlCommand(sql, conn) { CommandType = CommandType.Text, CommandTimeout = 30 };
+        
+        cmd.Parameters.AddWithValue("@Id", id);
+        cmd.Parameters.AddWithValue("@Nome", nome);
+        cmd.Parameters.AddWithValue("@Idade", idade);
+        cmd.Parameters.AddWithValue("@Email", email);
+        cmd.Parameters.AddWithValue("@DataNascimento", dataNascimento);
+
+        return cmd.ExecuteNonQuery();
     }
 
     /// <summary>
     /// Exclui um registro de Aluno do banco de dados.
     /// </summary>
-    /// <param name="id">O ID do Aluno a ser excluído.</param>
-    /// <returns>O número de linhas afetadas.</returns>
+    /// <param name="id">O ID do Aluno a ser excluï¿½do.</param>
+    /// <returns>O nï¿½mero de linhas afetadas.</returns>
     public int Excluir(int id)
     {
-        throw new NotImplementedException();
+        const string sql = "DELETE FROM dbo.Alunos WHERE Id = @Id";
+
+        using var conn = new SqlConnection(ConnectionString);
+        conn.Open();
+        using var cmd = new SqlCommand(sql, conn) { CommandType = CommandType.Text, CommandTimeout = 30 };
+        
+        cmd.Parameters.AddWithValue("@Id", id);
+
+        return cmd.ExecuteNonQuery();
     }
 
     /// <summary>
@@ -96,6 +154,35 @@ public class AlunoRepository : IRepository<Aluno>
     /// <returns>Uma lista de entidades Aluno correspondentes.</returns>
     public List<Aluno> Buscar(string propriedade, object valor)
     {
-        throw new NotImplementedException();
+        // ValidaÃ§Ã£o das propriedades permitidas para evitar SQL injection
+        var propriedadesValidas = new[] { "Nome", "Idade", "Email", "DataNascimento" };
+        if (!propriedadesValidas.Contains(propriedade))
+        {
+            throw new ArgumentException($"Propriedade '{propriedade}' nÃ£o Ã© vÃ¡lida para busca.");
+        }
+
+        var sql = $"SELECT Id, Nome, Idade, Email, DataNascimento FROM dbo.Alunos WHERE {propriedade} = @Valor ORDER BY Id";
+        var alunos = new List<Aluno>();
+
+        using var conn = new SqlConnection(ConnectionString);
+        conn.Open();
+        using var cmd = new SqlCommand(sql, conn) { CommandType = CommandType.Text, CommandTimeout = 30 };
+        
+        cmd.Parameters.AddWithValue("@Valor", valor ?? DBNull.Value);
+        using var reader = cmd.ExecuteReader();
+
+        while (reader.Read())
+        {
+            var aluno = new Aluno(
+                reader.GetInt32("Id"),
+                reader.GetString("Nome"),
+                reader.GetInt32("Idade"),
+                reader.GetString("Email"),
+                reader.GetDateTime("DataNascimento")
+            );
+            alunos.Add(aluno);
+        }
+
+        return alunos;
     }
 }
