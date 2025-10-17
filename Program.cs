@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Builder;
 
 #region Config
 // Carrega a connection string do appsettings.json
@@ -69,6 +70,9 @@ app.MapControllers();
 var logger = new FileLogger("log.txt");
 try
 {
+    // Aplicar migrations do Entity Framework Core
+    await MigrationsHelper.ApplyMigrationsAsync(connString);
+    
     var alunoRepo = new AlunoRepository(connString);
     var userRepo = new UserRepository(connString);
     

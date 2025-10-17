@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Controlador para operações CRUD de alunos com autenticação JWT.
