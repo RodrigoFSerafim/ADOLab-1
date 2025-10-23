@@ -1,5 +1,3 @@
----
-
 ## Integrantes da Equipe
 
 | **Nome**                   | **RM**   |
